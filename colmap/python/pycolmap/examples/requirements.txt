@@ -1,0 +1,9 @@
+# Requirements for the SuperGlue prototype example
+numpy
+opencv-python
+# PyTorch: choose appropriate wheel for your CUDA or CPU setup. See https://pytorch.org/get-started/locally/
+torch
+# Optional: if you want torchvision utilities
+# torchvision
+# Optional: pycolmap (if you have built and want to use the pycolmap bindings)
+# pycolmap
