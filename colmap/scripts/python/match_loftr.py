@@ -71,9 +71,6 @@ def main():
             
         # Load and resize images
         # LoftR works best with resized images (e.g. 640 or 840) to avoid OOM and for speed
-        # We'll use kornia's resize or just load at a smaller scale if possible, 
-        # but kornia.io.load_image loads full res.
-        
         img0 = kornia.io.load_image(str(path0), kornia.io.ImageLoadType.GRAY8).float() / 255.0
         img1 = kornia.io.load_image(str(path1), kornia.io.ImageLoadType.GRAY8).float() / 255.0
         
@@ -128,12 +125,6 @@ def main():
             
             existing = image_keypoints[name]
             # Calculate distances
-            # existing: (N, 2), kpts: (M, 2)
-            # We want to find for each kpt, if it exists in existing
-            
-            # Process in chunks to avoid huge memory usage if N*M is large
-            # But here M is small (~2k), N grows.
-            
             dists = torch.cdist(kpts, existing) # (M, N)
             min_dists, min_indices = torch.min(dists, dim=1)
             
@@ -170,7 +161,7 @@ def main():
         kpts = kpts_tensor.cpu().numpy()
         
         # Create dummy descriptors (COLMAP needs them)
-        # We use 128-dim zero vectors or random, doesn't matter as we provide matches
+        # We use 128-dim zero vectors or random, doesn't matter since we provide matches
         num_kpts = len(kpts)
         desc = np.zeros((num_kpts, 128), dtype=np.uint8)
         
