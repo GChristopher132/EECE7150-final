@@ -46,7 +46,7 @@
 
 namespace colmap {
 
-MAKE_ENUM_CLASS_OVERLOAD_STREAM(FeatureMatcherType, 0, SIFT, SUPERGLUE, LOFTR);
+MAKE_ENUM_CLASS_OVERLOAD_STREAM(FeatureMatcherType, 0, SIFT, SUPERGLUE, LOFTR, LIGHTGLUE);
 
 struct SiftMatchingOptions;
 
@@ -68,6 +68,11 @@ struct FeatureMatchingOptions {
   // LoftR integration
   std::string loftr_weights = "outdoor";  // "indoor" or "outdoor"
   double loftr_match_threshold = 0.2;
+
+  // LightGlue integration
+  std::string lightglue_features = "superpoint"; // superpoint, disk, aliked, sift
+  double lightglue_match_threshold = 0.0;
+  double lightglue_filter_threshold = 0.1;
 
   // Number of threads for feature matching and geometric verification.
   int num_threads = -1;

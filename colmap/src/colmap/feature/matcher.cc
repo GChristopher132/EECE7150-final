@@ -56,6 +56,8 @@ bool FeatureMatchingOptions::Check() const {
       return true;
     case FeatureMatcherType::LOFTR:
       return true;
+    case FeatureMatcherType::LIGHTGLUE:
+      return true;
     default:
       LOG(ERROR) << "Unknown feature matcher type: " << type;
       return false;
@@ -75,6 +77,11 @@ std::unique_ptr<FeatureMatcher> FeatureMatcher::Create(
     case FeatureMatcherType::LOFTR: {
       LOG(WARNING) << "LOFTR matcher selected but native integration not yet implemented."
                    << " Falling back to SIFT matching. Run external LoftR script and import matches via 'Custom' tab for now.";
+      return CreateSiftFeatureMatcher(options);
+    }
+    case FeatureMatcherType::LIGHTGLUE: {
+      LOG(WARNING) << "LIGHTGLUE matcher selected but native integration not yet implemented."
+                   << " Falling back to SIFT matching. Run external LightGlue script and import matches via 'Custom' tab for now.";
       return CreateSiftFeatureMatcher(options);
     }
     default: {

@@ -65,6 +65,7 @@ class FeatureMatchingTab : public QWidget {
   QComboBox* matcher_type_cb_;
   QComboBox* superglue_weights_cb_;
   QComboBox* loftr_weights_cb_;
+  QComboBox* lightglue_features_cb_;
   std::vector<FeatureMatcherType> matcher_types_;
 };
 
@@ -128,6 +129,7 @@ void FeatureMatchingTab::CreateGeneralOptions() {
   add_matcher_type(FeatureMatcherType::SIFT);
   add_matcher_type(FeatureMatcherType::SUPERGLUE);
   add_matcher_type(FeatureMatcherType::LOFTR);
+  add_matcher_type(FeatureMatcherType::LIGHTGLUE);
   options_widget_->AddWidgetRow("Type", matcher_type_cb_);
 
   superglue_weights_cb_ = new QComboBox(options_widget_);
@@ -139,6 +141,13 @@ void FeatureMatchingTab::CreateGeneralOptions() {
   loftr_weights_cb_->addItem("indoor");
   loftr_weights_cb_->addItem("outdoor");
   options_widget_->AddWidgetRow("LoftR Weights", loftr_weights_cb_);
+
+  lightglue_features_cb_ = new QComboBox(options_widget_);
+  lightglue_features_cb_->addItem("superpoint");
+  lightglue_features_cb_->addItem("disk");
+  lightglue_features_cb_->addItem("aliked");
+  lightglue_features_cb_->addItem("sift");
+  options_widget_->AddWidgetRow("LightGlue Features", lightglue_features_cb_);
 
   options_widget_->AddOptionInt(
       &options_->feature_matching->num_threads, "num_threads", -1);
@@ -417,6 +426,74 @@ void ExhaustiveMatchingTab::Run() {
     importer->Wait();
     
     // Now import matches
+    FeaturePairsMatchingOptions matcher_options;
+    matcher_options.match_list_path = matches_path;
+    matcher_options.verify_matches = true;
+
+    auto matcher = CreateFeaturePairsFeatureMatcher(matcher_options,
+                                                    *options_->feature_matching,
+                                                    *options_->two_view_geometry,
+                                                    *options_->database_path);
+    thread_control_widget_->StartThread(
+        "Importing matches...", true, std::move(matcher));
+    return;
+  }
+
+  if (options_->feature_matching->type == FeatureMatcherType::LIGHTGLUE) {
+    const std::string database_path = *options_->database_path;
+    const std::string output_dir =
+        JoinPaths(GetParentDir(database_path), "features");
+    const std::string pairs_path = JoinPaths(output_dir, "pairs.txt");
+    const std::string matches_path = JoinPaths(output_dir, "matches.txt");
+    const std::string script_path =
+        "/home/garrett/VSCode/EECE7150-final/colmap/scripts/python/"
+        "match_lightglue.py";
+
+    CreateDirIfNotExists(output_dir);
+
+    auto database = Database::Open(database_path);
+    const std::vector<Image> images = database->ReadAllImages();
+
+    std::ofstream pairs_file(pairs_path);
+    for (size_t i = 0; i < images.size(); ++i) {
+      for (size_t j = i + 1; j < images.size(); ++j) {
+        pairs_file << images[i].Name() << " " << images[j].Name() << std::endl;
+      }
+    }
+    pairs_file.close();
+
+    QStringList args;
+    args << QString::fromStdString(script_path);
+    args << "--pairs_file" << QString::fromStdString(pairs_path);
+    args << "--features_dir" << QString::fromStdString(output_dir);
+    args << "--output_file" << QString::fromStdString(matches_path);
+    args << "--features" << lightglue_features_cb_->currentText();
+
+    if (!options_->feature_matching->use_gpu) {
+      args << "--force_cpu";
+    }
+
+    QProcess process;
+    process.setProcessChannelMode(QProcess::ForwardedChannels);
+    const std::string python_path =
+        "/home/garrett/VSCode/EECE7150-final/venv/bin/python";
+    process.start(QString::fromStdString(python_path), args);
+
+    if (!process.waitForStarted()) {
+      QMessageBox::critical(this, "Error", "Failed to start Python script.");
+      return;
+    }
+
+    QMessageBox::information(
+        this,
+        "Processing",
+        "Running LightGlue matching... check console.");
+
+    if (!process.waitForFinished(-1)) {
+      QMessageBox::critical(this, "Error", "Python script failed.");
+      return;
+    }
+
     FeaturePairsMatchingOptions matcher_options;
     matcher_options.match_list_path = matches_path;
     matcher_options.verify_matches = true;
